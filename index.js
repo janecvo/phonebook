@@ -1,6 +1,18 @@
 const express = require("express");
 const app = express();
 const moment = require("moment")
+const morgan = require ("morgan")
+
+app.use(express.json())
+//3.7 add morgan
+// app.use(morgan("tiny"))
+morgan.token("sameline",(request) => { 
+    if(request.method == 'POST')
+        return ' ' + JSON.stringify(request.body);
+    else return ' ';
+})
+app.use(morgan(':method :url :status :res[content-length] - :response-time ms'))
+
 
 let persons = [
     {
@@ -26,7 +38,7 @@ let persons = [
 ];
 
 app.get("/", (request, response) => {
-    response.send("<h1>Welcome to my Phonebook!</h1>");
+    response.send("<h1>Welcome to the Phonebook!</h1>");
 });
 
 app.get("/api/persons", (request, response) => {
@@ -38,51 +50,32 @@ app.get("/info", (request, response) => {
     "Phonebook has info for " + persons.length + " people" + "</br>" + moment().format("dddd, MMMM Do, YYYY, h:mm:ss a")
     );
 
-app.get("/api/persons/:id", (request, response) => {        
-    const id = Number(request.params.id);
-    const person = persons.find((person) => person.id === id);
-    
-//changes to status 404 for unavail IDs
-    if (person){ 
-        response.json(person);
-    } else {
-        response.status(404).end();
-    }
-    });
-
-app.delete('/api/persons/:id', (request, response) => {
-    const id = Number(request.params.id)
-    persons = persons.filter((person) => person.id !== id)
-    
-    response.status(204).end()
-    })
-
-app.post('/api/persons', (request, response) => {  
-    const person = request.body  
-    console.log(person)  
-    response.json(person)
-})
-    
 const generateId = () => {
     const maxId = persons.length > 0
-    ? Math.max(...persons.map(n => n.id))
-    : 0
+        ? Math.max(...persons.map(person => person.id))
+        : 0
     return maxId + 1
 }
-    
+
 app.post('/api/persons', (request, response) => {
     const body = request.body
+
+    const person = {
+        name: body.name,
+        number: body.number,
+        id: generateId(),
+    }
     
-    if (!body.content) {
+    if (!body.name || !body.number) {
         return response.status(400).json({ 
-        error: 'content missing' 
+        error: 'name or number missing' 
         })
     }
-    const person = {
-    content: body.content,
-    important: body.important || false,
-    date: new Date(),
-    id: generateId(),
+
+    if (body.name === body.name){
+        return response.status(400).json({
+            error: 'duplicate name'
+        })
     }
     
     persons = persons.concat(person)
@@ -90,6 +83,24 @@ app.post('/api/persons', (request, response) => {
     response.json(person)
     })
 
+app.get("/api/persons/:id", (request, response) => {        
+    const id = Number(request.params.id);
+    const person = persons.find(person => person.id === id);
+    // console.log(p.id)
+
+    if (person){ 
+        response.json(person);
+    } else {
+        response.status(404).end();
+    }
+    });
+
+app.delete("/api/persons/:id", (request, response) => {
+    const id = Number(request.params.id)
+    persons = persons.filter(person => person.id !== id)
+    
+    response.status(204).end()
+    })    
 
 })
 
